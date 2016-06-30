@@ -18,123 +18,112 @@ Param(
     [switch]$TreatAsOne
 )
 
+$script:PALData = $null
 $script:objExcel = $null
 $script:objWorkbook = $null
 
-function Measure-WorkingProcess {
+function ConvertFrom-PAL {
     Param(
         [Parameter(Mandatory=$true)]
-        [string]$File,
+        [string]$File
+    )
 
+    try {
+        $ret = $false
+        if (Test-Path -Path $File) {
+            $html = New-Object -ComObject "HTMLFile"
+            $source = Get-Content -Path $file -Raw
+            $html.IHTMLDocument2_write($source)
+            $tables = $html.getElementsByTagName("TABLE")
+            $tables = $tables | Where id -ne $null
+            if ($tables) {
+                $ret = @()
+                foreach ($t in $tables) {
+                    $colHeadings = @()
+                    $tblData = @()
+                    $activity = "Processing tables in $File"
+                    foreach ($r in $t.rows()) {
+                        Write-Progress -Activity $activity -Status "Processing $($t.id)" -CurrentOperation "Row $($r.rowIndex)/$($t.rows().Length)" -PercentComplete (($r.rowIndex / $t.rows().Length) * 100)
+                        $data = @{}
+                        foreach ($c in $r.cells()) {
+                            if ($c.tagName.ToLower() -eq 'th') {
+                                $colHeadings += $c.InnerText
+                            } else {
+                                $data.Add($colHeadings[$c.cellIndex], $c.InnerText)
+                            }
+                        }
+                        if ($data.Count) { $tblData += New-Object PSObject -Property $data }
+                    }
+                    Write-Progress -Activity $activity -Completed
+                    $props = @{'File'=$File;'ID'=$t.id; 'Data'=$tblData}
+                    $ret += New-Object PSObject -Property $props
+                }
+            }
+        }
+    } catch {
+        $ret = $false
+    }
+    if ($html) { [void][System.Runtime.Interopservices.Marshal]::ReleaseComObject($html) }
+    return $ret
+}
+
+function Measure-WorkingProcess {
+    Param(
         [Parameter(Mandatory=$false)]
         [string[]]$Application
     )
 
-    $ret = $null
-    if (Test-Path -Path $File) {
-        $html = New-Object -ComObject "HTMLFile"
-        $source = Get-Content -Path $file -Raw
-        $html.IHTMLDocument2_write($source)
-
-        Write-Host "  Determining working process columns for extraction...    " -NoNewLine
-        $table = $html.getElementsByTagName("TABLE") | Where id -eq "table3"
-        $colAvg = ($table.rows()[0].cells() | Where InnerText -eq "Avg").cellIndex
-        $colProcess = ($table.rows()[0].cells() | Where InnerText -eq "\Process(*)\Working Set").cellIndex
-        Write-Host "(Process name: $colProcess,  Avg: $colAvg)"
-        $numRows = $table.rows().Length
-        $msg = "Parsing applications"
+    $ret = $false
+    $d = ($script:PALData | Where ID -eq 'table3').Data
+    if ($d) {
+        if (-not $Application) {
+            $Application = @()
+            Write-Host "  Determining applications...    " -NoNewLine
+            $Application = $d | % { $_.'\Process(*)\Working Set'.Split("/#")[1] } | Select -Unique
+            Write-Host "Done"
+        }
+        if ($Application -notcontains '_total') { $Application += '_total' }
+        $ret = @()
+        $msg = "Processing Working Set data"
         Write-Host "  $msg...    " -NoNewLine
-        $apps = @()
-        foreach ($r in $table.rows()) {
-            if ($r.rowIndex -ne 0) {
-                $a = ($r.cells() | Where { $_.cellIndex -eq $colProcess}).InnerText
-                $ws = [long]($r.cells() | Where { $_.cellIndex -eq $colAvg}).InnerText
-                $apps += New-Object -Type PSObject -Property @{'Application'=$a.ToLower();'WorkingSet'=$ws}
-            }
-            Write-Progress -Activity "$msg in $File..." -CurrentOperation "Row $($r.rowIndex)/$numRows" -PercentComplete (($r.rowIndex / $numRows) * 100)
+        $idx = 1
+        foreach ($a in $Application) {
+            Write-Progress -Activity $msg -Status "Processing $a" -CurrentOperation "$idx/$($Application.Length)" -PercentComplete (($idx / $Application.Length) * 100)
+            $instances = $d | Where { $_.'\Process(*)\Working Set'.ToLower().Contains("/$($a.ToLower())") }
+            $i = $instances | Measure-Object Avg -Sum -Average
+            $ret += New-Object -Type PSObject -Property @{'Application'=$a; 'NumberOfInstances'=$i.Count; 'Sum'=$i.Sum; 'Avg'=[string]$i.Average}
+            $idx += 1
         }
         Write-Progress -Activity $msg -Completed
         Write-Host "Done"
-        if (-not $Application) {
-            $Application = @()
-            $msg = "Determining applications..."
-            Write-Host "  $msg    " -NoNewLine
-            $Application = $apps | % { $_.Application.Split("/#")[1] } | Select -Unique
-            Write-Host "Done"
-        }
-        $ret = @()
-        $idxApplication = 0
-        if ($Application -notcontains '_total') { $Application += '_total' }
-        foreach ($a in $Application) {
-            $idxApplication += 1
-            $msg = "Retrieving details for application $a ($idxApplication/$($Application.Length))..."
-            Write-Host "  $msg    " -NoNewLine
-            Write-Progress -Activity $msg -PercentComplete (($idxApplication / $Application.Length) * 100)
-            $instances = $apps | Where { $_.Application.Contains("/$($a.ToLower())") }
-            $i = $instances | Measure-Object WorkingSet -Sum -Average
-            $ret += New-Object -Type PSObject -Property @{'Application'=$a; 'NumberOfInstances'=$i.Count; 'Sum'=$i.Sum; 'Avg'=[string]$i.Average; 'Server'=[System.IO.Path]::GetFilenameWithoutExtension($File)}
-            Write-Host "Done"
-        }
-        Write-Progress -Activity $msg -Completed
     }
     return $ret
 }
 
 function Measure-Sessions {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$File
-    )
-
-    $ret = $null
-    if (Test-Path -Path $File) {
-        $html = New-Object -ComObject "HTMLFile"
-        $source = Get-Content -Path $file -Raw
-        $html.IHTMLDocument2_write($source)
-
-        Write-Host "  Determining session columns for extraction...    " -NoNewLine
-        $table = $html.getElementsByTagName("TABLE") | Where id -eq "table7"
-        $colAvg = ($table.rows()[0].cells() | Where InnerText -eq "Avg").cellIndex
-        $colMax = ($table.rows()[0].cells() | Where InnerText -eq "Max").cellIndex
-        $colMin = ($table.rows()[0].cells() | Where InnerText -eq "Min").cellIndex
-        Write-Host "(Avg: $colAvg, Min: $colMin, Max: $colMax)"
-        Write-Host "  Extracting session details...    " -NoNewLine
-        $props = @{'Server'=[System.IO.Path]::GetFilenameWithoutExtension($File)}
-        $props.Add('Avg', [long]($table.rows()[1].cells() | Where cellIndex -eq $colAvg).InnerText)
-        $props.Add('Min', [long]($table.rows()[1].cells() | Where cellIndex -eq $colMin).InnerText)
-        $props.Add('Max', [long]($table.rows()[1].cells() | Where cellIndex -eq $colMax).InnerText)
-        $ret = New-Object -Type PSObject -Property $props
-        Write-Host "Done"
-    }
+    Write-Host "  Processing Session data...    " -NoNewLine
+    $ret = $false
+    $d = ($script:PALData | Where ID -eq 'table7').Data
+    if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
+    Write-Host "Done"
     return $ret
 }
 
 function Measure-ProcessorTime {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$File
-    )
+    Write-Host "  Processing Processor Time data...    " -NoNewLine
+    $ret = $false
+    $d = ($script:PALData | Where ID -eq 'table4').Data
+    if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
+    Write-Host "Done"
+    return $ret
+}
 
-    $ret = $null
-    if (Test-Path -Path $File) {
-        $html = New-Object -ComObject "HTMLFile"
-        $source = Get-Content -Path $file -Raw
-        $html.IHTMLDocument2_write($source)
-
-        Write-Host "  Determining processor time columns for extraction...    " -NoNewLine
-        $table = $html.getElementsByTagName("TABLE") | Where id -eq "table4"
-        $colAvg = ($table.rows()[0].cells() | Where InnerText -eq "Avg").cellIndex
-        $colMax = ($table.rows()[0].cells() | Where InnerText -eq "Max").cellIndex
-        $colMin = ($table.rows()[0].cells() | Where InnerText -eq "Min").cellIndex
-        Write-Host "(Avg: $colAvg, Min: $colMin, Max: $colMax)"
-        Write-Host "  Extracting session details...    " -NoNewLine
-        $props = @{'Server'=[System.IO.Path]::GetFilenameWithoutExtension($File)}
-        $props.Add('Avg', [double]($table.rows()[1].cells() | Where cellIndex -eq $colAvg).InnerText)
-        $props.Add('Min', [double]($table.rows()[1].cells() | Where cellIndex -eq $colMin).InnerText)
-        $props.Add('Max', [double]($table.rows()[1].cells() | Where cellIndex -eq $colMax).InnerText)
-        $ret = New-Object -Type PSObject -Property $props
-        Write-Host "Done"
-    }
+function Measure-ProcessorQueueLength {
+    Write-Host "  Processing Processor Queue Length data...    " -NoNewLine
+    $ret = $false
+    $d = ($script:PALData | Where ID -eq 'table5').Data
+    if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
+    Write-Host "Done"
     return $ret
 }
 
@@ -149,9 +138,10 @@ function New-ExcelFile {
     # $script:objExcel.Visible = $true
     $script:objWorkbook = $script:objExcel.Workbooks.Add()
     foreach($s in $Sheets) { $script:objWorkbook.Sheets.Add([System.Reflection.Missing]::Value, $script:objWorkbook.Sheets.Item($script:objWorkbook.Sheets.Count)).Name = $s }
+    $script:objExcel.Application.DisplayAlerts = $false
     $script:objWorkbook.Sheets(1).Delete() #remove the worksheet that we don't need
-    Write-Host "Done"
-}
+    $script:objExcel.Application.DisplayAlerts = $true
+    Write-Host "Done"}
 
 function Write-ExcelFile {
     Param(
@@ -372,6 +362,72 @@ function New-ExcelAvgCPUAndMemorySheet {
     Write-Host "Done"
 }
 
+function New-ExcelProcessorQueueSheet {
+    Param(
+        [Parameter(Mandatory=$true)]
+        $WithoutPMSessions,
+
+        [Parameter(Mandatory=$true)]
+        $WithPMSessions,
+
+        [Parameter(Mandatory=$true)]
+        $WithoutPMProcessorQueueLength,
+
+        [Parameter(Mandatory=$true)]
+        $WithPMProcessorQueueLength,
+
+        [Parameter(Mandatory=$true)]
+        [int]$SheetIndex
+    )
+
+    Write-Host "  Building the Processor Queue sheet...    " -NoNewLine
+    $sheet = $script:objWorkbook.Sheets($SheetIndex)
+    $sheet.Range("A1") = "Processor Queue Length"
+    $sheet.Range("A2") = "Without PM"
+    $sheet.Range("A3") = "Server"
+    $sheet.Range("B3") = "Sessions"
+    $sheet.Range("C3") = "Queue Length"
+    $row = 4
+    foreach ($i in $WithoutPMSessions) {
+        $sheet.Cells($row, 1) = $i.Server
+        $sheet.Cells($row, 2) = $i.Avg
+        $sheet.Cells($row, 3) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Avg
+        $row += 1
+    }
+    $sheet.Cells($row, 1) = "With PM"
+    $row += 1
+    $sheet.Cells($row, 1) = "Server"
+    $sheet.Cells($row, 2) = "Sessions"
+    $sheet.Cells($row, 3) = "Queue Length"
+    $row += 1
+    foreach ($i in $WithPMSessions) {
+        $sheet.Cells($row, 1) = $i.Server
+        $sheet.Cells($row, 2) = $i.Avg
+        $sheet.Cells($row, 3) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Avg
+        $row += 1
+    }
+
+    #-- add the scatter chart --#
+    $objChart = $sheet.Shapes.AddChart2(240, -4169).Chart
+    $objChart.ChartTitle.Text = $sheet.Range("A1").Value()
+    $objChart.SetElement(301)
+    $objChart.SetElement(104)
+    $objChart.Axes(2).HasTitle = $true
+    $objChart.Axes(2).AxisTitle.Text = $sheet.Range("C3").Value()
+    $objChart.Axes(1).HasTitle = $true
+    $objChart.Axes(1).AxisTitle.Text = $sheet.Range("B3").Value()
+    foreach ($c in $objChart.FullSeriesCollection()) { $c.Delete() | Out-Null }
+    $s = $objChart.SeriesCollection().NewSeries.Invoke()
+    $s.Name = $sheet.Range("A2").Value()
+    $s.XValues = $sheet.Range($sheet.Cells(4, 2).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 2).Address())
+    $s.Values = $sheet.Range($sheet.Cells(4, 3).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 3).Address())
+    $s = $objChart.SeriesCollection().NewSeries.Invoke()
+    $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
+    $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 2).Address(), $sheet.Cells($row - 1, 2).Address())
+    $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 3).Address(), $sheet.Cells($row - 1, 3).Address())
+    Write-Host "Done"
+}
+
 function Get-TreatAsOneObject {
     Param(
         [Parameter(Mandatory=$true)]
@@ -411,31 +467,43 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
     $WithoutPMWorkingProcess = @()
     $WithoutPMSessions = @()
     $WithoutPMProcessorTime = @()
+    $WithoutPMProcessorQueueLength = @()
     foreach ($f in (Get-ChildItem -Path "$WithoutPMFolder\*.htm")) {
         Write-Host "Parsing $($f.FullName)"
-        $d = Measure-WorkingProcess -File $f.FullName -Application $Application
-        if ($d) { $WithoutPMWorkingProcess += $d }
-        $s = Measure-Sessions -File $f.FullName
+        $script:PALData = ConvertFrom-PAL -File $f.FullName
+        $servername = ([System.IO.Path]::GetFilenameWithoutExtension($f.FullName))
+        $wp = Measure-WorkingProcess -Application $Application | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+        if ($wp) { $WithoutPMWorkingProcess += $wp }
+        $s = Measure-Sessions | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
         if ($s) { $WithoutPMSessions += $s }
-        $p = Measure-ProcessorTime -File $f.FullName
+        $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
         if ($p) { $WithoutPMProcessorTime += $p }
+        $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+        if ($l) { $WithoutPMProcessorQueueLength += $l }
     }
     $WithPMWorkingProcess = @()
     $WithPMSessions = @()
     $WithPMProcessorTime = @()
+    $WithPMProcessorQueueLength = @()
     foreach ($f in (Get-ChildItem -Path "$WithPMFolder\*.htm")) {
         Write-Host "Parsing $($f.FullName)"
-        $d = Measure-WorkingProcess -File $f.FullName -Application $Application
-        if ($d) { $WithPMWorkingProcess += $d }
-        $s = Measure-Sessions -File $f.FullName
+        $script:PALData = ConvertFrom-PAL -File $f.FullName
+        $servername = ([System.IO.Path]::GetFilenameWithoutExtension($f.FullName))
+        $wp = Measure-WorkingProcess -Application $Application | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+        if ($wp) { $WithPMWorkingProcess += $wp }
+        $s = Measure-Sessions | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
         if ($s) { $WithPMSessions += $s }
-        $p = Measure-ProcessorTime -File $f.FullName
+        $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
         if ($p) { $WithPMProcessorTime += $p }
+        $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+        if ($l) { $WithPMProcessorQueueLength += $l }
     }
     if ($PSCmdlet.ParameterSetName -eq 'TreatAsOne') {
         Write-Host "Aggregating data...    " -NoNewLine
         $WithoutPMWorkingProcess = Get-TreatAsOneObject -InputObject ($WithoutPMWorkingProcess | Group-Object -Property Application) -Key 'Application' -Server $Label
         $WithPMWorkingProcess = Get-TreatAsOneObject -InputObject ($WithPMWorkingProcess | Group-Object -Property Application) -Key 'Application' -Server $Label
+        $WithoutPMSessionsSep = $WithoutPMSessions
+        $WithPMSessionsSep = $WithPMSessions
         $WithoutPMSessions = Get-TreatAsOneObject -InputObject $WithoutPMSessions -Server $Label
         $WithPMSessions = Get-TreatAsOneObject -InputObject $WithPMSessions -Server $Label
         $WithoutPMProcessorTime = Get-TreatAsOneObject -InputObject $WithoutPMProcessorTime -Server $Label
@@ -446,10 +514,15 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
 if ($WithoutPMWorkingProcess -and $WithPMWorkingProcess) {
     $WithoutPMWorkingProcess = $WithoutPMWorkingProcess | Sort Server,Application
     $WithPMWorkingProcess = $WithPMWorkingProcess | Sort Server,Application
-    $sheets = @('Average CPU & Memory', 'Application Memory')
+    $sheets = @('Average CPU & Memory', 'Application Memory', 'Processor Queue Length')
     New-ExcelFile -Sheets $sheets
     New-ExcelApplicationMemorySheet -WithoutPM $WithoutPMWorkingProcess -WithPM $WithPMWorkingProcess -SheetIndex $([array]::indexOf($sheets, 'Application Memory') + 1) -AllServers:($PSCmdlet.ParameterSetName -ne 'TreatAsOne')
     New-ExcelAvgCPUAndMemorySheet -WithoutPM $WithoutPMWorkingProcess -WithPM $WithPMWorkingProcess -WithoutPMSessions $WithoutPMSessions -WithPMSessions $WithPMSessions -WithoutPMProcessorTime $WithoutPMProcessorTime -WithPMProcessorTime $WithPMProcessorTime -SheetIndex $([array]::indexOf($sheets, 'Average CPU & Memory') + 1)
+    if ($PSCmdlet.ParameterSetName -eq 'TreatAsOne') {
+        New-ExcelProcessorQueueSheet -WithoutPMSessions $WithoutPMSessionsSep -WithPMSessions $WithPMSessionsSep -WithoutPMProcessorQueueLength $WithoutPMProcessorQueueLength -WithPMProcessorQueueLength $WithPMProcessorQueueLength -SheetIndex $([array]::indexOf($sheets, 'Processor Queue Length') + 1)
+    } else {
+        New-ExcelProcessorQueueSheet -WithoutPMSessions $WithoutPMSessions -WithPMSessions $WithPMSessions -WithoutPMProcessorQueueLength $WithoutPMProcessorQueueLength -WithPMProcessorQueueLength $WithPMProcessorQueueLength -SheetIndex $([array]::indexOf($sheets, 'Processor Queue Length') + 1)
+    }
     Write-ExcelFile -Filename $Filename
     if ($script:objWorkbook) { [void][System.Runtime.Interopservices.Marshal]::ReleaseComObject($script:objWorkbook) }
     Remove-Variable objWorkbook -Scope Script
