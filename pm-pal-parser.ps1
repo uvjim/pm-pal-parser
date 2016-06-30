@@ -138,6 +138,35 @@ function Measure-ProcessorTime {
     return $ret
 }
 
+function Measure-ProcessorQueueLength {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$File
+    )
+
+    $ret = $null
+    if (Test-Path -Path $File) {
+        $html = New-Object -ComObject "HTMLFile"
+        $source = Get-Content -Path $file -Raw
+        $html.IHTMLDocument2_write($source)
+
+        Write-Host "  Determining processor queue length columns for extraction...    " -NoNewLine
+        $table = $html.getElementsByTagName("TABLE") | Where id -eq "table5"
+        $colAvg = ($table.rows()[0].cells() | Where InnerText -eq "Avg").cellIndex
+        $colMax = ($table.rows()[0].cells() | Where InnerText -eq "Max").cellIndex
+        $colMin = ($table.rows()[0].cells() | Where InnerText -eq "Min").cellIndex
+        Write-Host "(Avg: $colAvg, Min: $colMin, Max: $colMax)"
+        Write-Host "  Extracting queue length details...    " -NoNewLine
+        $props = @{'Server'=[System.IO.Path]::GetFilenameWithoutExtension($File)}
+        $props.Add('Avg', [double]($table.rows()[1].cells() | Where cellIndex -eq $colAvg).InnerText)
+        $props.Add('Min', [double]($table.rows()[1].cells() | Where cellIndex -eq $colMin).InnerText)
+        $props.Add('Max', [double]($table.rows()[1].cells() | Where cellIndex -eq $colMax).InnerText)
+        $ret = New-Object -Type PSObject -Property $props
+        Write-Host "Done"
+    }
+    return $ret
+}
+
 function New-ExcelFile {
     Param(
         [Parameter(Mandatory=$true)]
@@ -149,7 +178,9 @@ function New-ExcelFile {
     # $script:objExcel.Visible = $true
     $script:objWorkbook = $script:objExcel.Workbooks.Add()
     foreach($s in $Sheets) { $script:objWorkbook.Sheets.Add([System.Reflection.Missing]::Value, $script:objWorkbook.Sheets.Item($script:objWorkbook.Sheets.Count)).Name = $s }
+    $script:objExcel.Application.DisplayAlerts = $false
     $script:objWorkbook.Sheets(1).Delete() #remove the worksheet that we don't need
+    $script:objExcel.Application.DisplayAlerts = $true
     Write-Host "Done"
 }
 
@@ -372,6 +403,72 @@ function New-ExcelAvgCPUAndMemorySheet {
     Write-Host "Done"
 }
 
+function New-ExcelProcessorQueueSheet {
+    Param(
+        [Parameter(Mandatory=$true)]
+        $WithoutPMSessions,
+
+        [Parameter(Mandatory=$true)]
+        $WithPMSessions,
+
+        [Parameter(Mandatory=$true)]
+        $WithoutPMProcessorQueueLength,
+
+        [Parameter(Mandatory=$true)]
+        $WithPMProcessorQueueLength,
+
+        [Parameter(Mandatory=$true)]
+        [int]$SheetIndex
+    )
+
+    Write-Host "  Building the Processor Queue sheet...    " -NoNewLine
+    $sheet = $script:objWorkbook.Sheets($SheetIndex)
+    $sheet.Range("A1") = "Processor Queue Length"
+    $sheet.Range("A2") = "Without PM"
+    $sheet.Range("A3") = "Server"
+    $sheet.Range("B3") = "Sessions"
+    $sheet.Range("C3") = "Queue Length"
+    $row = 4
+    foreach ($i in $WithoutPMSessions) {
+        $sheet.Cells($row, 1) = $i.Server
+        $sheet.Cells($row, 2) = $i.Avg
+        $sheet.Cells($row, 3) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Avg
+        $row += 1
+    }
+    $sheet.Cells($row, 1) = "With PM"
+    $row += 1
+    $sheet.Cells($row, 1) = "Server"
+    $sheet.Cells($row, 2) = "Sessions"
+    $sheet.Cells($row, 3) = "Queue Length"
+    $row += 1
+    foreach ($i in $WithPMSessions) {
+        $sheet.Cells($row, 1) = $i.Server
+        $sheet.Cells($row, 2) = $i.Avg
+        $sheet.Cells($row, 3) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Avg
+        $row += 1
+    }
+
+    #-- add the scatter chart --#
+    $objChart = $sheet.Shapes.AddChart2(240, -4169).Chart
+    $objChart.ChartTitle.Text = $sheet.Range("A1").Value()
+    $objChart.SetElement(301)
+    $objChart.SetElement(104)
+    $objChart.Axes(2).HasTitle = $true
+    $objChart.Axes(2).AxisTitle.Text = $sheet.Range("C3").Value()
+    $objChart.Axes(1).HasTitle = $true
+    $objChart.Axes(1).AxisTitle.Text = $sheet.Range("B3").Value()
+    foreach ($c in $objChart.FullSeriesCollection()) { $c.Delete() | Out-Null }
+    $s = $objChart.SeriesCollection().NewSeries.Invoke()
+    $s.Name = $sheet.Range("A2").Value()
+    $s.XValues = $sheet.Range($sheet.Cells(4, 2).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 2).Address())
+    $s.Values = $sheet.Range($sheet.Cells(4, 3).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 3).Address())
+    $s = $objChart.SeriesCollection().NewSeries.Invoke()
+    $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
+    $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 2).Address(), $sheet.Cells($row - 1, 2).Address())
+    $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 3).Address(), $sheet.Cells($row - 1, 3).Address())
+    Write-Host "Done"
+}
+
 function Get-TreatAsOneObject {
     Param(
         [Parameter(Mandatory=$true)]
@@ -411,6 +508,7 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
     $WithoutPMWorkingProcess = @()
     $WithoutPMSessions = @()
     $WithoutPMProcessorTime = @()
+    $WithoutPMProcessorQueueLength = @()
     foreach ($f in (Get-ChildItem -Path "$WithoutPMFolder\*.htm")) {
         Write-Host "Parsing $($f.FullName)"
         $d = Measure-WorkingProcess -File $f.FullName -Application $Application
@@ -419,10 +517,13 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
         if ($s) { $WithoutPMSessions += $s }
         $p = Measure-ProcessorTime -File $f.FullName
         if ($p) { $WithoutPMProcessorTime += $p }
+        $l = Measure-ProcessorQueueLength -File $f.FullName
+        if ($l) { $WithoutPMProcessorQueueLength += $l }
     }
     $WithPMWorkingProcess = @()
     $WithPMSessions = @()
     $WithPMProcessorTime = @()
+    $WithPMProcessorQueueLength = @()
     foreach ($f in (Get-ChildItem -Path "$WithPMFolder\*.htm")) {
         Write-Host "Parsing $($f.FullName)"
         $d = Measure-WorkingProcess -File $f.FullName -Application $Application
@@ -431,11 +532,15 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
         if ($s) { $WithPMSessions += $s }
         $p = Measure-ProcessorTime -File $f.FullName
         if ($p) { $WithPMProcessorTime += $p }
+        $l = Measure-ProcessorQueueLength -File $f.FullName
+        if ($l) { $WithPMProcessorQueueLength += $l }
     }
     if ($PSCmdlet.ParameterSetName -eq 'TreatAsOne') {
         Write-Host "Aggregating data...    " -NoNewLine
         $WithoutPMWorkingProcess = Get-TreatAsOneObject -InputObject ($WithoutPMWorkingProcess | Group-Object -Property Application) -Key 'Application' -Server $Label
         $WithPMWorkingProcess = Get-TreatAsOneObject -InputObject ($WithPMWorkingProcess | Group-Object -Property Application) -Key 'Application' -Server $Label
+        $WithoutPMSessionsSep = $WithoutPMSessions
+        $WithPMSessionsSep = $WithPMSessions
         $WithoutPMSessions = Get-TreatAsOneObject -InputObject $WithoutPMSessions -Server $Label
         $WithPMSessions = Get-TreatAsOneObject -InputObject $WithPMSessions -Server $Label
         $WithoutPMProcessorTime = Get-TreatAsOneObject -InputObject $WithoutPMProcessorTime -Server $Label
@@ -446,10 +551,15 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
 if ($WithoutPMWorkingProcess -and $WithPMWorkingProcess) {
     $WithoutPMWorkingProcess = $WithoutPMWorkingProcess | Sort Server,Application
     $WithPMWorkingProcess = $WithPMWorkingProcess | Sort Server,Application
-    $sheets = @('Average CPU & Memory', 'Application Memory')
+    $sheets = @('Average CPU & Memory', 'Application Memory', 'Processor Queue Length')
     New-ExcelFile -Sheets $sheets
     New-ExcelApplicationMemorySheet -WithoutPM $WithoutPMWorkingProcess -WithPM $WithPMWorkingProcess -SheetIndex $([array]::indexOf($sheets, 'Application Memory') + 1) -AllServers:($PSCmdlet.ParameterSetName -ne 'TreatAsOne')
     New-ExcelAvgCPUAndMemorySheet -WithoutPM $WithoutPMWorkingProcess -WithPM $WithPMWorkingProcess -WithoutPMSessions $WithoutPMSessions -WithPMSessions $WithPMSessions -WithoutPMProcessorTime $WithoutPMProcessorTime -WithPMProcessorTime $WithPMProcessorTime -SheetIndex $([array]::indexOf($sheets, 'Average CPU & Memory') + 1)
+    if ($PSCmdlet.ParameterSetName -eq 'TreatAsOne') {
+        New-ExcelProcessorQueueSheet -WithoutPMSessions $WithoutPMSessionsSep -WithPMSessions $WithPMSessionsSep -WithoutPMProcessorQueueLength $WithoutPMProcessorQueueLength -WithPMProcessorQueueLength $WithPMProcessorQueueLength -SheetIndex $([array]::indexOf($sheets, 'Processor Queue Length') + 1)
+    } else {
+        New-ExcelProcessorQueueSheet -WithoutPMSessions $WithoutPMSessions -WithPMSessions $WithPMSessions -WithoutPMProcessorQueueLength $WithoutPMProcessorQueueLength -WithPMProcessorQueueLength $WithPMProcessorQueueLength -SheetIndex $([array]::indexOf($sheets, 'Processor Queue Length') + 1)
+    }
     Write-ExcelFile -Filename $Filename
     if ($script:objWorkbook) { [void][System.Runtime.Interopservices.Marshal]::ReleaseComObject($script:objWorkbook) }
     Remove-Variable objWorkbook -Scope Script
