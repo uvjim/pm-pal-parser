@@ -103,7 +103,7 @@ function Measure-WorkingProcess {
 function Measure-Sessions {
     Write-Host "  Processing Session data...    " -NoNewLine
     $ret = $false
-    $d = ($script:PALData | Where ID -eq 'table7').Data
+    $d = ($script:PALData | Where ID -eq 'table6').Data
     if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
     Write-Host "Done"
     return $ret
@@ -141,7 +141,8 @@ function New-ExcelFile {
     $script:objExcel.Application.DisplayAlerts = $false
     $script:objWorkbook.Sheets(1).Delete() #remove the worksheet that we don't need
     $script:objExcel.Application.DisplayAlerts = $true
-    Write-Host "Done"}
+    Write-Host "Done"
+}
 
 function Write-ExcelFile {
     Param(
