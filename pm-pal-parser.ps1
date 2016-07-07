@@ -387,28 +387,32 @@ function New-ExcelProcessorQueueSheet {
     $sheet.Range("A2") = "Without PM"
     $sheet.Range("A3") = "Server"
     $sheet.Range("B3") = "Sessions"
-    $sheet.Range("C3") = "Queue Length"
+    $sheet.Range("C3") = "Avg Queue Length"
+    $sheet.Range("D3") = "Max Queue Length"
     $row = 4
     foreach ($i in $WithoutPMSessions) {
         $sheet.Cells($row, 1) = $i.Server
         $sheet.Cells($row, 2) = $i.Avg
         $sheet.Cells($row, 3) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Avg
+        $sheet.Cells($row, 4) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Max
         $row += 1
     }
     $sheet.Cells($row, 1) = "With PM"
     $row += 1
     $sheet.Cells($row, 1) = "Server"
     $sheet.Cells($row, 2) = "Sessions"
-    $sheet.Cells($row, 3) = "Queue Length"
+    $sheet.Cells($row, 3) = "Avg Queue Length"
+    $sheet.Cells($row, 4) = "Max Queue Length"
     $row += 1
     foreach ($i in $WithPMSessions) {
         $sheet.Cells($row, 1) = $i.Server
         $sheet.Cells($row, 2) = $i.Avg
         $sheet.Cells($row, 3) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Avg
+        $sheet.Cells($row, 4) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Max
         $row += 1
     }
 
-    #-- add the scatter chart --#
+    #-- add the scatter avg chart --#
     $objChart = $sheet.Shapes.AddChart2(240, -4169).Chart
     $objChart.ChartTitle.Text = $sheet.Range("A1").Value()
     $objChart.SetElement(301)
@@ -426,6 +430,26 @@ function New-ExcelProcessorQueueSheet {
     $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
     $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 2).Address(), $sheet.Cells($row - 1, 2).Address())
     $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 3).Address(), $sheet.Cells($row - 1, 3).Address())
+
+    #-- add the scatter max chart --#
+    $objChart = $sheet.Shapes.AddChart2(240, -4169).Chart
+    $objChart.ChartTitle.Text = $sheet.Range("A1").Value()
+    $objChart.SetElement(301)
+    $objChart.SetElement(104)
+    $objChart.Axes(2).HasTitle = $true
+    $objChart.Axes(2).AxisTitle.Text = $sheet.Range("D3").Value()
+    $objChart.Axes(1).HasTitle = $true
+    $objChart.Axes(1).AxisTitle.Text = $sheet.Range("B3").Value()
+    foreach ($c in $objChart.FullSeriesCollection()) { $c.Delete() | Out-Null }
+    $s = $objChart.SeriesCollection().NewSeries.Invoke()
+    $s.Name = $sheet.Range("A2").Value()
+    $s.XValues = $sheet.Range($sheet.Cells(4, 2).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 2).Address())
+    $s.Values = $sheet.Range($sheet.Cells(4, 4).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 4).Address())
+    $s = $objChart.SeriesCollection().NewSeries.Invoke()
+    $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
+    $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 2).Address(), $sheet.Cells($row - 1, 2).Address())
+    $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 4).Address(), $sheet.Cells($row - 1, 4).Address())
+
     Write-Host "Done"
 }
 
