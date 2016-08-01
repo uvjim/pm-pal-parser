@@ -386,15 +386,17 @@ function New-ExcelProcessorQueueSheet {
     $sheet.Range("A1") = "Processor Queue Length"
     $sheet.Range("A2") = "Without PM"
     $sheet.Range("A3") = "Server"
-    $sheet.Range("B3") = "Sessions"
+    $sheet.Range("B3") = "Avg Sessions"
     $sheet.Range("C3") = "Avg Queue Length"
-    $sheet.Range("D3") = "Max Queue Length"
+    $sheet.Range("D3") = "Max Sessions"
+    $sheet.Range("E3") = "Max Queue Length"
     $row = 4
     foreach ($i in $WithoutPMSessions) {
         $sheet.Cells($row, 1) = $i.Server
         $sheet.Cells($row, 2) = $i.Avg
         $sheet.Cells($row, 3) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Avg
-        $sheet.Cells($row, 4) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Max
+        $sheet.Cells($row, 4) = $i.Max
+        $sheet.Cells($row, 5) = ($WithoutPMProcessorQueueLength | Where Server -eq $i.Server).Max
         $row += 1
     }
     $sheet.Cells($row, 1) = "With PM"
@@ -408,7 +410,8 @@ function New-ExcelProcessorQueueSheet {
         $sheet.Cells($row, 1) = $i.Server
         $sheet.Cells($row, 2) = $i.Avg
         $sheet.Cells($row, 3) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Avg
-        $sheet.Cells($row, 4) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Max
+        $sheet.Cells($row, 4) = $i.Max
+        $sheet.Cells($row, 5) = ($WithPMProcessorQueueLength | Where Server -eq $i.Server).Max
         $row += 1
     }
 
@@ -437,18 +440,18 @@ function New-ExcelProcessorQueueSheet {
     $objChart.SetElement(301)
     $objChart.SetElement(104)
     $objChart.Axes(2).HasTitle = $true
-    $objChart.Axes(2).AxisTitle.Text = $sheet.Range("D3").Value()
+    $objChart.Axes(2).AxisTitle.Text = $sheet.Range("E3").Value()
     $objChart.Axes(1).HasTitle = $true
-    $objChart.Axes(1).AxisTitle.Text = $sheet.Range("B3").Value()
+    $objChart.Axes(1).AxisTitle.Text = $sheet.Range("D3").Value()
     foreach ($c in $objChart.FullSeriesCollection()) { $c.Delete() | Out-Null }
     $s = $objChart.SeriesCollection().NewSeries.Invoke()
     $s.Name = $sheet.Range("A2").Value()
-    $s.XValues = $sheet.Range($sheet.Cells(4, 2).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 2).Address())
-    $s.Values = $sheet.Range($sheet.Cells(4, 4).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 4).Address())
+    $s.XValues = $sheet.Range($sheet.Cells(4, 4).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 4).Address())
+    $s.Values = $sheet.Range($sheet.Cells(4, 5).Address(), $sheet.Cells($WithoutPMSessions.Count - 1 + 4, 5).Address())
     $s = $objChart.SeriesCollection().NewSeries.Invoke()
     $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
-    $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 2).Address(), $sheet.Cells($row - 1, 2).Address())
-    $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 4).Address(), $sheet.Cells($row - 1, 4).Address())
+    $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 4).Address(), $sheet.Cells($row - 1, 4).Address())
+    $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 5).Address(), $sheet.Cells($row - 1, 5).Address())
 
     Write-Host "Done"
 }
