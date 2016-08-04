@@ -70,11 +70,14 @@ function ConvertFrom-PAL {
 function Measure-WorkingProcess {
     Param(
         [Parameter(Mandatory=$false)]
+        [int]$TableNumber = 3,
+
+        [Parameter(Mandatory=$false)]
         [string[]]$Application
     )
 
     $ret = $false
-    $d = ($script:PALData | Where ID -eq 'table3').Data
+    $d = ($script:PALData | Where ID -eq ('table' + $TableNumber)).Data
     if ($d) {
         if (-not $Application) {
             $Application = @()
@@ -101,27 +104,42 @@ function Measure-WorkingProcess {
 }
 
 function Measure-Sessions {
+    Param(
+        [Parameter(Mandatory=$false)]
+        [int]$TableNumber = 6
+    )
+
     Write-Host "  Processing Session data...    " -NoNewLine
     $ret = $false
-    $d = ($script:PALData | Where ID -eq 'table6').Data
+    $d = ($script:PALData | Where ID -eq ('table' + $TableNumber)).Data
     if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
     Write-Host "Done"
     return $ret
 }
 
 function Measure-ProcessorTime {
+    Param(
+        [Parameter(Mandatory=$false)]
+        [int]$TableNumber = 4
+    )
+
     Write-Host "  Processing Processor Time data...    " -NoNewLine
     $ret = $false
-    $d = ($script:PALData | Where ID -eq 'table4').Data
+    $d = ($script:PALData | Where ID -eq ('table' + $TableNumber)).Data
     if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
     Write-Host "Done"
     return $ret
 }
 
 function Measure-ProcessorQueueLength {
+    Param(
+        [Parameter(Mandatory=$false)]
+        [int]$TableNumber = 5
+    )
+
     Write-Host "  Processing Processor Queue Length data...    " -NoNewLine
     $ret = $false
-    $d = ($script:PALData | Where ID -eq 'table5').Data
+    $d = ($script:PALData | Where ID -eq ('table' + $TableNumber)).Data
     if ($d) { $ret = New-Object -Type PSObject -Property @{'Avg'=[long]($d[0].Avg); 'Min'=[long]($d[0].Min); 'Max'=[long]($d[0].Max)} }
     Write-Host "Done"
     return $ret
@@ -506,7 +524,8 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
         if ($s) { $WithoutPMSessions += $s }
         $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
         if ($p) { $WithoutPMProcessorTime += $p }
-        $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+        $l = Measure-ProcessorQueueLength
+        if ($l) { $l | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru }
         if ($l) { $WithoutPMProcessorQueueLength += $l }
     }
     $WithPMWorkingProcess = @()
