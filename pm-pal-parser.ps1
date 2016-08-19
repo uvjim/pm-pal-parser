@@ -509,6 +509,23 @@ function Get-TreatAsOneObject {
     return $ret
 }
 
+function Get-ServerName {
+    Param(
+        [Parameter(Mandatory=$false)]
+        [int]$TableNumber = 0,
+
+        [Parameter(Mandatory=$false)]
+        [string]$ColumnHeading = '\Memory\Committed Bytes'
+    )
+
+    $ret = $false
+    $d = ($script:PALData | Where ID -eq ('table' + $TableNumber)).Data
+    if ($d) {
+        if ($d | Get-Member -MemberType NoteProperty -Name $ColumnHeading) { $ret = $d.$ColumnHeading }
+    }
+    return $ret
+}
+
 if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
     $WithoutPMWorkingProcess = @()
     $WithoutPMSessions = @()
@@ -517,16 +534,17 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
     foreach ($f in (Get-ChildItem -Path "$WithoutPMFolder\*.htm")) {
         Write-Host "Parsing $($f.FullName)"
         $script:PALData = ConvertFrom-PAL -File $f.FullName
-        $servername = ([System.IO.Path]::GetFilenameWithoutExtension($f.FullName))
-        $wp = Measure-WorkingProcess -Application $Application | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($wp) { $WithoutPMWorkingProcess += $wp }
-        $s = Measure-Sessions | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($s) { $WithoutPMSessions += $s }
-        $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($p) { $WithoutPMProcessorTime += $p }
-        $l = Measure-ProcessorQueueLength
-        if ($l) { $l | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru }
-        if ($l) { $WithoutPMProcessorQueueLength += $l }
+        $servername = Get-ServerName
+        if ($servername) {
+            $wp = Measure-WorkingProcess -Application $Application | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($wp) { $WithoutPMWorkingProcess += $wp }
+            $s = Measure-Sessions | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($s) { $WithoutPMSessions += $s }
+            $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($p) { $WithoutPMProcessorTime += $p }
+            $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($l) { $WithoutPMProcessorQueueLength += $l }
+        }
     }
     $WithPMWorkingProcess = @()
     $WithPMSessions = @()
@@ -535,15 +553,17 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
     foreach ($f in (Get-ChildItem -Path "$WithPMFolder\*.htm")) {
         Write-Host "Parsing $($f.FullName)"
         $script:PALData = ConvertFrom-PAL -File $f.FullName
-        $servername = ([System.IO.Path]::GetFilenameWithoutExtension($f.FullName))
-        $wp = Measure-WorkingProcess -Application $Application | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($wp) { $WithPMWorkingProcess += $wp }
-        $s = Measure-Sessions | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($s) { $WithPMSessions += $s }
-        $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($p) { $WithPMProcessorTime += $p }
-        $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
-        if ($l) { $WithPMProcessorQueueLength += $l }
+        $servername = Get-ServerName
+        if ($servername) {
+            $wp = Measure-WorkingProcess -Application $Application | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($wp) { $WithPMWorkingProcess += $wp }
+            $s = Measure-Sessions | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($s) { $WithPMSessions += $s }
+            $p = Measure-ProcessorTime | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($p) { $WithPMProcessorTime += $p }
+            $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
+            if ($l) { $WithPMProcessorQueueLength += $l }
+        }
     }
     if ($PSCmdlet.ParameterSetName -eq 'TreatAsOne') {
         Write-Host "Aggregating data...    " -NoNewLine
