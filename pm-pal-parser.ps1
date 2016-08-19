@@ -93,8 +93,10 @@ function Measure-WorkingProcess {
         foreach ($a in $Application) {
             Write-Progress -Activity $msg -Status "Processing $a" -CurrentOperation "$idx/$($Application.Length)" -PercentComplete (($idx / $Application.Length) * 100)
             $instances = $d | Where { $_.'\Process(*)\Working Set'.ToLower().Contains("/$($a.ToLower())") }
-            $i = $instances | Measure-Object Avg -Sum -Average
-            $ret += New-Object -Type PSObject -Property @{'Application'=$a; 'NumberOfInstances'=$i.Count; 'Sum'=$i.Sum; 'Avg'=[string]$i.Average}
+            if ($instances) {
+                $i = $instances | Measure-Object Avg -Sum -Average
+                $ret += New-Object -Type PSObject -Property @{'Application'=$a; 'NumberOfInstances'=$i.Count; 'Sum'=$i.Sum; 'Avg'=[string]$i.Average}
+            }
             $idx += 1
         }
         Write-Progress -Activity $msg -Completed
@@ -211,18 +213,25 @@ function New-ExcelApplicationMemorySheet {
     }
     #-- Get the with PM rows in --#
     foreach($a in $WithPM) {
-        $objCell = $sheet.Columns(2).Find($a.Application, [System.Reflection.Missing]::Value, -4163)
-        if ($objCell) {
-            $addrStart = $objCell.Address()
-            $break = $false
-            do {
-                if ($objCell.Offset(0, -1).Value() -eq $a.Server) {
-                    $sheet.Cells($objCell.Row, 4) = [Math]::Round($a.Avg / 1MB)
-                    $break = $true
-                } else {
-                    $objCell = $sheet.Columns(2).FindNext($objCell)
-                }
-            } until ($objCell.Address() -eq $addrStart -or -not $objCell -or $break)
+        if ($a.Application -ne '_total') {
+            $objCell = $sheet.Columns(2).Find($a.Application, [System.Reflection.Missing]::Value, -4163)
+            if ($objCell) {
+                $addrStart = $objCell.Address()
+                $break = $false
+                do {
+                    if ($objCell.Offset(0, -1).Value() -eq $a.Server) {
+                        $sheet.Cells($objCell.Row, 4) = [Math]::Round($a.Avg / 1MB)
+                        $break = $true
+                    } else {
+                        $objCell = $sheet.Columns(2).FindNext($objCell)
+                    }
+                } until ($objCell.Address() -eq $addrStart -or -not $objCell -or $break)
+            } else {
+                $sheet.Cells($row, 1) = $a.Server
+                $sheet.Cells($row, 2) = $a.Application
+                $sheet.Cells($row, 4) = [Math]::Round($a.Avg / 1MB)
+                $row += 1
+            }
         }
     }
 
@@ -230,7 +239,7 @@ function New-ExcelApplicationMemorySheet {
     foreach($c in $sheet.Columns(1).Cells()) {
         if ($c.Row() -gt 1) {
             if (-not $c.Value()) { break }
-            if ($c.Offset(0, 2).Value() -ne 0) {
+            if ($c.Offset(0, 2).Value() -and $c.Offset(0, 3).Value()) {
                 $c.Offset(0, 4).Formula = "=($($c.Offset(0, 2).Address())-$($c.Offset(0, 3).Address()))/$($c.Offset(0, 2).Address())"
                 $c.Offset(0, 4).NumberFormat = "0.00%"
             } else {
