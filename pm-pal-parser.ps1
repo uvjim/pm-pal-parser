@@ -250,9 +250,10 @@ function New-ExcelApplicationMemorySheet {
     }
 
     #-- Build the All Servers chart if needed --#
+    $titleChart = "Application Memory (Average MB) -"
     if ($AllServers) {
         $objShape = $sheet.Shapes.AddChart2(286, 54)
-        $objShape.Chart.ChartTitle.Text = "All Endpoints"
+        $objShape.Chart.ChartTitle.Text = "$titleChart All Endpoints"
         $objCell = $sheet.Columns(1).Find('', [System.Reflection.Missing]::Value, -4163)
         $rngData = $sheet.Range($sheet.Cells(1, 1).Address(), $objCell.Offset(-1, 3).Address())
         $objShape.Chart.SetSourceData($rngData)
@@ -269,7 +270,7 @@ function New-ExcelApplicationMemorySheet {
         } until ($objCell.Address() -eq $addrStart -or -not $objCell)
         $rngData = $sheet.Range($sheet.Range($addrStart).Offset(0, 1), $sheet.Range($addrEnd).Offset(0, 3))
         $objShape = $sheet.Shapes.AddChart2(286, 54)
-        $objShape.Chart.ChartTitle.Text = $s
+        $objShape.Chart.ChartTitle.Text = "$titleChart $s"
         $objShape.Chart.SetSourceData($rngData)
         $objShape.Chart.PlotBy = 2
         $objShape.Chart.FullSeriesCollection(1).Name = $sheet.Cells(1, 3)
@@ -379,11 +380,11 @@ function New-ExcelAvgCPUAndMemorySheet {
 
     #-- Draw the charts --#
     $objShape = $sheet.Shapes.AddChart2(286, 54)
-    $objShape.Chart.ChartTitle.Text = "Processor Time per Session"
+    $objShape.Chart.ChartTitle.Text = "Per User CPU Usage (Average Processor Time)"
     $objShape.Chart.SetSourceData($rngProcessorTimeData)
     $objShape.Chart.PlotBy = 2
     $objShape = $sheet.Shapes.AddChart2(286, 54)
-    $objShape.Chart.ChartTitle.Text = "Working Set per Session"
+    $objShape.Chart.ChartTitle.Text = "Per User Memory Usage (Average MB)"
     $objShape.Chart.SetSourceData($rngWorkingSetData)
     $objShape.Chart.PlotBy = 2
 
