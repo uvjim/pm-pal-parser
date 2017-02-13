@@ -258,6 +258,8 @@ function New-ExcelApplicationMemorySheet {
         $rngData = $sheet.Range($sheet.Cells(1, 1).Address(), $objCell.Offset(-1, 3).Address())
         $objShape.Chart.SetSourceData($rngData)
         $objShape.Chart.SetElement(104)
+        $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+        $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
     }
 
     #-- Build the individual charts --#
@@ -274,7 +276,9 @@ function New-ExcelApplicationMemorySheet {
         $objShape.Chart.SetSourceData($rngData)
         $objShape.Chart.PlotBy = 2
         $objShape.Chart.FullSeriesCollection(1).Name = $sheet.Cells(1, 3)
+        $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
         $objShape.Chart.FullSeriesCollection(2).Name = $sheet.Cells(1, 4)
+        $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
         $objShape.Chart.SetElement(104)
     }
 
@@ -383,10 +387,14 @@ function New-ExcelAvgCPUAndMemorySheet {
     $objShape.Chart.ChartTitle.Text = "Per User CPU Usage (Average Processor Time)"
     $objShape.Chart.SetSourceData($rngProcessorTimeData)
     $objShape.Chart.PlotBy = 2
+    $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+    $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
     $objShape = $sheet.Shapes.AddChart2(286, 54)
     $objShape.Chart.ChartTitle.Text = "Per User Memory Usage (Average MB)"
     $objShape.Chart.SetSourceData($rngWorkingSetData)
     $objShape.Chart.PlotBy = 2
+    $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+    $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
 
     Write-Host "Done"
 }
@@ -461,6 +469,8 @@ function New-ExcelProcessorQueueSheet {
     $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
     $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 2).Address(), $sheet.Cells($row - 1, 2).Address())
     $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 3).Address(), $sheet.Cells($row - 1, 3).Address())
+    $objChart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+    $objChart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
 
     #-- add the scatter max chart --#
     $objChart = $sheet.Shapes.AddChart2(240, -4169).Chart
@@ -480,6 +490,8 @@ function New-ExcelProcessorQueueSheet {
     $s.Name = $sheet.Cells($row - $WithPMSessions.Count - 2, 1).Value()
     $s.XValues =  $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 4).Address(), $sheet.Cells($row - 1, 4).Address())
     $s.Values = $sheet.Range($sheet.Cells($row - $WithPMSessions.Count, 5).Address(), $sheet.Cells($row - 1, 5).Address())
+    $objChart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+    $objChart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
 
     Write-Host "Done"
 }
