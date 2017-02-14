@@ -265,21 +265,23 @@ function New-ExcelApplicationMemorySheet {
     #-- Build the individual charts --#
     foreach($s in ($WithoutPM.Server | Select -Unique)) {
         $objCell = $sheet.Columns(1).Find($s, [System.Reflection.Missing]::Value, -4163)
-        $addrStart = $objCell.Address()
-        do {
-            $addrEnd = $objCell.Address()
-            $objCell = $sheet.Columns(1).FindNext($objCell)
-        } until ($objCell.Address() -eq $addrStart -or -not $objCell)
-        $rngData = $sheet.Range($sheet.Range($addrStart).Offset(0, 1), $sheet.Range($addrEnd).Offset(0, 3))
-        $objShape = $sheet.Shapes.AddChart2(286, 54)
-        $objShape.Chart.ChartTitle.Text = "$titleChart $s"
-        $objShape.Chart.SetSourceData($rngData)
-        $objShape.Chart.PlotBy = 2
-        $objShape.Chart.FullSeriesCollection(1).Name = $sheet.Cells(1, 3)
-        $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
-        $objShape.Chart.FullSeriesCollection(2).Name = $sheet.Cells(1, 4)
-        $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
-        $objShape.Chart.SetElement(104)
+        if ($objCell) {
+            $addrStart = $objCell.Address()
+            do {
+                $addrEnd = $objCell.Address()
+                $objCell = $sheet.Columns(1).FindNext($objCell)
+            } until ($objCell.Address() -eq $addrStart -or -not $objCell)
+            $rngData = $sheet.Range($sheet.Range($addrStart).Offset(0, 1), $sheet.Range($addrEnd).Offset(0, 3))
+            $objShape = $sheet.Shapes.AddChart2(286, 54)
+            $objShape.Chart.ChartTitle.Text = "$titleChart $s"
+            $objShape.Chart.SetSourceData($rngData)
+            $objShape.Chart.PlotBy = 2
+            $objShape.Chart.FullSeriesCollection(1).Name = $sheet.Cells(1, 3)
+            $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+            $objShape.Chart.FullSeriesCollection(2).Name = $sheet.Cells(1, 4)
+            $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
+            $objShape.Chart.SetElement(104)
+        }
     }
 
     #-- Clean Up --#
