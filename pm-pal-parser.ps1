@@ -258,7 +258,9 @@ function New-ExcelApplicationMemorySheet {
         $rngData = $sheet.Range($sheet.Cells(1, 1).Address(), $objCell.Offset(-1, 3).Address())
         $objShape.Chart.SetSourceData($rngData)
         $objShape.Chart.SetElement(104)
+        $objShape.Chart.FullSeriesCollection(1).Name = $sheet.Cells(1, 3)
         $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
+        $objShape.Chart.FullSeriesCollection(2).Name = $sheet.Cells(1, 4)
         $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
     }
 
