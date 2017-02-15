@@ -391,12 +391,14 @@ function New-ExcelAvgCPUAndMemorySheet {
     $objShape.Chart.PlotBy = 2
     $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
     $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
+    $objShape.Chart.SetElement(104)
     $objShape = $sheet.Shapes.AddChart2(286, 54)
     $objShape.Chart.ChartTitle.Text = "Per User Memory Usage (Average MB)"
     $objShape.Chart.SetSourceData($rngWorkingSetData)
     $objShape.Chart.PlotBy = 2
     $objShape.Chart.FullSeriesCollection(1).Format.Fill.ForeColor.RGB = 9279133
     $objShape.Chart.FullSeriesCollection(2).Format.Fill.ForeColor.RGB = 1810175
+    $objShape.Chart.SetElement(104)
 
     Write-Host "Done"
 }
