@@ -572,6 +572,8 @@ if ((Test-Path -Path $WithoutPMFolder) -and (Test-Path -Path $WithPMFolder)) {
             if ($p) { $WithoutPMProcessorTime += $p }
             $l = Measure-ProcessorQueueLength | Add-Member -MemberType NoteProperty -Name 'Server' -Value $servername -PassThru
             if ($l) { $WithoutPMProcessorQueueLength += $l }
+        } else {
+            throw("Unable to retrieve the server name from $f")
         }
     }
     $WithPMWorkingProcess = @()
