@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<PAL PALVERSION="2.0" NAME="PM PAL Parser" DESCRIPTION="PM PAL Parser" CONTENTOWNERS="James Simpson, Wes Dobry" FEEDBACKEMAILADDRESS="james.simpson@ivanti.com" VERSION="1.1" LANGUAGE="English" LANGUAGECODE="en">
+  <ANALYSIS NAME="Paging File % Usage" ENABLED="True" CATEGORY="Paging File" PRIMARYDATASOURCE="\Paging File(*)\% Usage" ID="dc78a546-5c36-4149-908a-2dd7c317c113" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[The amount of the Page File instance in use in percent.  See also Process\\Page File Bytes.]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Paging File(*)\% Usage" COLLECTIONVARNAME="CollectionOfPagingFilePercentUsage" EXPRESSIONPATH="\Paging File(*)\% Usage" TRENDVARNAME="TrendPagingFilePercentUsage" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Paging File(*)\% Usage" ISTHRESHOLDSADDED="False" DATASOURCE="\Paging File(*)\% Usage" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Processor % Processor Time" ENABLED="True" CATEGORY="Processor" PRIMARYDATASOURCE="\Processor(*)\% Processor Time" ID="0d98bfbc-52d1-45eb-a4bb-4287c971016f" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[% Processor Time is the percentage of elapsed time that the processor spends to execute a non-Idle thread. It is calculated by measuring the percentage of time that the processor spends executing the idle thread and then subtracting that value from 100%. (Each processor has an idle thread that consumes cycles when no other threads are ready to run). This counter is the primary indicator of processor activity, and displays the average percentage of busy time observed during the sample interval. It should be noted that the accounting calculation of whether the processor is idle is performed at an internal sampling interval of the system clock (10ms). On todays fast processors, % Processor Time can therefore underestimate the processor utilization as the processor may be spending a lot of time servicing threads between the system clock sampling interval. Workload based timer applications are one example  of applications  which are more likely to be measured inaccurately as timers are signaled just after the sample is taken.]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Processor(*)\% Processor Time" COLLECTIONVARNAME="CollectionOfProcessorPercentProcessorTime" EXPRESSIONPATH="\Processor(*)\% Processor Time" TRENDVARNAME="TrendProcessorPercentProcessorTime" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Processor(*)\% Processor Time" ISTHRESHOLDSADDED="False" DATASOURCE="\Processor(*)\% Processor Time" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Process % User Time" ENABLED="True" CATEGORY="Process" PRIMARYDATASOURCE="\Process(*)\% User Time" ID="5b2e2d62-fb95-40c6-9b67-fdccaf8600ae" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[% User Time is the percentage of elapsed time that the process threads spent executing code in user mode. Applications, environment subsystems, and integral subsystems execute in user mode. Code executing in user mode cannot damage the integrity of the Windows executive, kernel, and device drivers. Unlike some early operating systems, Windows uses process boundaries for subsystem protection in addition to the traditional protection of user and privileged modes. Some work done by Windows on behalf of the application might appear in other subsystem processes in addition to the privileged time in the process.]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Process(*)\% User Time" COLLECTIONVARNAME="CollectionOfProcessPercentUserTime" EXPRESSIONPATH="\Process(*)\% User Time" TRENDVARNAME="TrendProcessPercentUserTime" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Process(*)\% User Time" ISTHRESHOLDSADDED="False" DATASOURCE="\Process(*)\% User Time" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Process Working Set" ENABLED="True" CATEGORY="Process" PRIMARYDATASOURCE="\Process(*)\Working Set" ID="326752be-8169-45b8-9ed9-5aeef0579ccc" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[Working Set is the current size, in bytes, of the Working Set of this process. The Working Set is the set of memory pages touched recently by the threads in the process. If free memory in the computer is above a threshold, pages are left in the Working Set of a process even if they are not in use.  When free memory falls below a threshold, pages are trimmed from Working Sets. If they are needed they will then be soft-faulted back into the Working Set before leaving main memory.]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Process(*)\Working Set" COLLECTIONVARNAME="CollectionOfProcessWorkingSet" EXPRESSIONPATH="\Process(*)\Working Set" TRENDVARNAME="TrendProcessWorkingSet" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Process(*)\Working Set" ISTHRESHOLDSADDED="False" DATASOURCE="\Process(*)\Working Set" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Terminal Services Active Sessions" ENABLED="True" CATEGORY="Terminal Services" PRIMARYDATASOURCE="\Terminal Services\Active Sessions" ID="69a43da3-b878-4563-871c-f22aa4c42b44" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[Number of active Terminal Services sessions]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Terminal Services\Active Sessions" COLLECTIONVARNAME="CollectionOfTerminalServicesActiveSessions" EXPRESSIONPATH="\Terminal Services\Active Sessions" TRENDVARNAME="TrendTerminalServicesActiveSessions" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Terminal Services\Active Sessions" ISTHRESHOLDSADDED="False" DATASOURCE="\Terminal Services\Active Sessions" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Terminal Services Inactive Sessions" ENABLED="True" CATEGORY="Terminal Services" PRIMARYDATASOURCE="\Terminal Services\Inactive Sessions" ID="86334c03-6ba6-44e6-984d-e26345e5d15a" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[Number of inactive Terminal Services sessions]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Terminal Services\Inactive Sessions" COLLECTIONVARNAME="CollectionOfTerminalServicesInactiveSessions" EXPRESSIONPATH="\Terminal Services\Inactive Sessions" TRENDVARNAME="TrendTerminalServicesInactiveSessions" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Terminal Services\Inactive Sessions" ISTHRESHOLDSADDED="False" DATASOURCE="\Terminal Services\Inactive Sessions" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Terminal Services Total Sessions" ENABLED="True" CATEGORY="Terminal Services" PRIMARYDATASOURCE="\Terminal Services\Total Sessions" ID="6d1ec2a1-c835-463c-83d9-e60179d0cbc8" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[Total number Terminal services sessions]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Terminal Services\Total Sessions" COLLECTIONVARNAME="CollectionOfTerminalServicesTotalSessions" EXPRESSIONPATH="\Terminal Services\Total Sessions" TRENDVARNAME="TrendTerminalServicesTotalSessions" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Terminal Services\Total Sessions" ISTHRESHOLDSADDED="False" DATASOURCE="\Terminal Services\Total Sessions" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="Memory Committed Bytes" ENABLED="True" CATEGORY="Memory" PRIMARYDATASOURCE="\Memory\Committed Bytes" ID="5aabd289-df1e-4ae3-8921-56cc9bad4a49" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[Committed Bytes is the amount of committed virtual memory, in bytes. Committed memory is the physical memory which has space reserved on the disk paging file(s). There can be one or more paging files on each physical drive. This counter displays the last observed value only; it is not an average.]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\Memory\Committed Bytes" COLLECTIONVARNAME="CollectionOfMemoryCommittedBytes" EXPRESSIONPATH="\Memory\Committed Bytes" TRENDVARNAME="TrendMemoryCommittedBytes" DATATYPE="integer" />
+    <CHART CHARTTITLE="\Memory\Committed Bytes" ISTHRESHOLDSADDED="False" DATASOURCE="\Memory\Committed Bytes" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <ANALYSIS NAME="System Processor Queue Length" ENABLED="True" CATEGORY="System" PRIMARYDATASOURCE="\System\Processor Queue Length" ID="e2d43c58-ab91-4d97-9c79-44d7310e16b3" FROMALLCOUNTERSTATS="False">
+    <DESCRIPTION><![CDATA[Processor Queue Length is the number of threads in the processor queue.  Unlike the disk counters, this counter counters, this counter shows ready threads only, not threads that are running.  There is a single queue for processor time even on computers with multiple processors. Therefore, if a computer has multiple processors, you need to divide this value by the number of processors servicing the workload. A sustained processor queue of less than 10 threads per processor is normally acceptable, dependent of the workload.]]></DESCRIPTION>
+    <DATASOURCE TYPE="CounterLog" NAME="\System\Processor Queue Length" COLLECTIONVARNAME="CollectionOfSystemProcessorQueueLength" EXPRESSIONPATH="\System\Processor Queue Length" TRENDVARNAME="TrendSystemProcessorQueueLength" DATATYPE="integer" />
+    <CHART CHARTTITLE="\System\Processor Queue Length" ISTHRESHOLDSADDED="False" DATASOURCE="\System\Processor Queue Length" CHARTLABELS="instance" />
+  </ANALYSIS>
+  <INHERITANCE FILEPATH="" />
+</PAL>
